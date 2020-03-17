@@ -8,10 +8,9 @@ use gio::prelude::*;
 use std::thread;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use std::sync::mpsc::channel;
 use std::sync::mpsc;
 
-use gtk::{Application, ApplicationWindow, Label, GtkWindowExt, WidgetExt, true_};
+use gtk::{Application, ApplicationWindow, Label, GtkWindowExt, WidgetExt};
 
 mod style;
 
@@ -74,7 +73,7 @@ fn show_window(duration: i8) {
         Default::default(),
     ).expect("failed to initialize GTK application");
 
-    application.connect_activate(|app| {
+    application.connect_activate(move |app| {
         let provider = gtk::CssProvider::new();
         provider
             .load_from_data(style::STYLE.as_bytes())
@@ -87,40 +86,39 @@ fn show_window(duration: i8) {
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
 
-        run(app, 10);
+        run(app, duration);
     });
 
     application.run(&[]);
 }
 
 fn main() {
-    let duration = Arc::new(Mutex::new(10 as i8));
+    let duration = Arc::new(Mutex::new(0 as i8));
     let (tx, rx) = mpsc::channel();
 
-    println!("start");
     {
 
         thread::spawn(move || {
-            while (true) {
+            loop {
                 let (duration, tx) = (duration.clone(), tx.clone());
                 let closure =  move || {
                     let mut duration = duration.lock().unwrap();
-                    *duration += 10;
-                    println!("duration add");
+                    *duration += 3;
                     thread::sleep(Duration::from_secs(5));
-                    tx.send(*duration);
+                    tx.send(*duration)
                 };
-                closure();
+                match closure() {
+                    Ok(_v) => (),
+                    Err(e) => println!("error parsing header: {:?}", e),
+                }
             }
         });
     }
 
     {
-        //let duration = duration.clone();
-        while (true) {
-            // show_window(duration);
+        loop {
             let duration = rx.recv().unwrap();
-            println!("dur {}", duration);
+            show_window(duration);
         }
     }
 }
