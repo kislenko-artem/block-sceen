@@ -103,13 +103,14 @@ fn main() {
         thread::spawn(move || {
             while (true) {
                 let (duration, tx) = (duration.clone(), tx.clone());
-                thread::spawn(move || {
+                let closure =  move || {
                     let mut duration = duration.lock().unwrap();
                     *duration += 10;
                     println!("duration add");
                     thread::sleep(Duration::from_secs(5));
                     tx.send(*duration);
-                });
+                };
+                closure();
             }
         });
     }
@@ -118,9 +119,7 @@ fn main() {
         //let duration = duration.clone();
         while (true) {
             // show_window(duration);
-            println!("wait for");
             let duration = rx.recv().unwrap();
-            println!("wait after");
             println!("dur {}", duration);
         }
     }
