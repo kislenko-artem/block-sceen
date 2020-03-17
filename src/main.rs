@@ -6,9 +6,12 @@ use gtk::prelude::*;
 use gio::prelude::*;
 
 use std::thread;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use std::sync::mpsc::channel;
+use std::sync::mpsc;
 
-use gtk::{Application, ApplicationWindow, Label, GtkWindowExt, WidgetExt};
+use gtk::{Application, ApplicationWindow, Label, GtkWindowExt, WidgetExt, true_};
 
 mod style;
 
@@ -25,7 +28,7 @@ impl Counter {
 
 }
 
-fn run(app: &gtk::Application) {
+fn run(app: &gtk::Application, duration: i8) {
     let window = ApplicationWindow::new(app);
     window.set_title("First GTK+ Program");
     window.set_default_size(350, 70);
@@ -42,7 +45,7 @@ fn run(app: &gtk::Application) {
     window.show_all();
 
     let counter = Counter{
-        i: 10
+        i: duration
     };
     let (tx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
     thread::spawn(move || {
@@ -65,8 +68,7 @@ fn run(app: &gtk::Application) {
     });
 }
 
-fn main() {
-
+fn show_window(duration: i8) {
     let application = Application::new(
         Some("com.github.gtk-rs.examples.basic"),
         Default::default(),
@@ -85,8 +87,41 @@ fn main() {
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
 
-        run(app);
+        run(app, 10);
     });
 
     application.run(&[]);
+}
+
+fn main() {
+    let duration = Arc::new(Mutex::new(10 as i8));
+    let (tx, rx) = mpsc::channel();
+
+    println!("start");
+    {
+
+        thread::spawn(move || {
+            while (true) {
+                let (duration, tx) = (duration.clone(), tx.clone());
+                thread::spawn(move || {
+                    let mut duration = duration.lock().unwrap();
+                    *duration += 10;
+                    println!("duration add");
+                    thread::sleep(Duration::from_secs(5));
+                    tx.send(*duration);
+                });
+            }
+        });
+    }
+
+    {
+        //let duration = duration.clone();
+        while (true) {
+            // show_window(duration);
+            println!("wait for");
+            let duration = rx.recv().unwrap();
+            println!("wait after");
+            println!("dur {}", duration);
+        }
+    }
 }
