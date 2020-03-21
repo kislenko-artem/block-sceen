@@ -12,6 +12,7 @@ use std::sync::mpsc;
 
 use gtk::{Application, ApplicationWindow, Label, GtkWindowExt, WidgetExt};
 
+mod config;
 mod style;
 
 
@@ -95,7 +96,7 @@ fn show_window(duration: i8) {
 fn main() {
     let duration = Arc::new(Mutex::new(0 as i8));
     let (tx, rx) = mpsc::channel();
-
+    let cnf = config::Config::new();
     {
 
         thread::spawn(move || {
@@ -104,7 +105,7 @@ fn main() {
                 let closure =  move || {
                     let mut duration = duration.lock().unwrap();
                     *duration += 3;
-                    thread::sleep(Duration::from_secs(5));
+                    thread::sleep(cnf.smalll_break);
                     tx.send(*duration)
                 };
                 match closure() {
