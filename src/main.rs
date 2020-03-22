@@ -105,10 +105,11 @@ fn main() {
                 let closure =  move || {
                     let mut duration = duration.lock().unwrap();
 
-                    // TODO: here should be defining  duration of break
-                    *duration += cnf.smalll_break.as_secs();
+                    // TODO: here should be defining  duration of break (big or small)
+                    *duration = cnf.smalll_break.as_secs();
 
-                    thread::sleep(Duration::from_secs(5));
+                    // TODO: here should be defining  duration of sleep (big or small) before break
+                    thread::sleep(cnf.small_cicle);
                     tx.send(*duration)
                 };
                 match closure() {
