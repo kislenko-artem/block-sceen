@@ -6,7 +6,7 @@ use gtk::prelude::*;
 use gio::prelude::*;
 
 use std::thread;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 use std::sync::mpsc;
 
@@ -95,6 +95,7 @@ fn show_window(duration: u64) {
 
 fn main() {
     let duration = Arc::new(Mutex::new(0 as u64));
+    let counter_mutex = Arc::new(Mutex::new(0 as u64));
     let (tx, rx) = mpsc::channel();
     let cnf = config::Config::new();
     {
@@ -102,20 +103,31 @@ fn main() {
         thread::spawn(move || {
             loop {
                 let (duration, tx) = (duration.clone(), tx.clone());
-                let closure =  move || {
-                    let mut duration = duration.lock().unwrap();
+                let counter_mutex = counter_mutex.clone();
 
-                    // TODO: here should be defining  duration of break (big or small)
-                    *duration = cnf.smalll_break.as_secs();
+                let mut closure =  move || {
+                    let mut break_duration: MutexGuard<u64> = duration.lock().unwrap();
+                    let mut counter: MutexGuard<u64> = counter_mutex.lock().unwrap();
 
-                    // TODO: here should be defining  duration of sleep (big or small) before break
-                    thread::sleep(cnf.small_cicle);
-                    tx.send(*duration)
+                    *break_duration = cnf.smalll_break.as_secs();
+
+                    if *counter == cnf.big_cicle.as_secs() / cnf.small_cicle.as_secs() {
+                        *break_duration = cnf.big_break.as_secs();
+                        *counter = 0;
+                    }
+
+                    println!("counter {}; total {}; break: {}",
+                             *counter, cnf.big_cicle.as_secs() / cnf.small_cicle.as_secs(), *break_duration);
+
+                    if *counter > 0 {
+                        tx.send(*break_duration).unwrap();
+                    }
+                    thread::sleep(cnf.small_cicle + Duration::from_secs(*break_duration));
+
+                    *counter += 1;
+
                 };
-                match closure() {
-                    Ok(_v) => (),
-                    Err(e) => println!("error parsing header: {:?}", e),
-                }
+                closure();
             }
         });
     }
