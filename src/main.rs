@@ -18,17 +18,17 @@ mod style;
 
 #[derive(Copy, Clone)]
 struct Counter {
-    i: i8,
+    i: u64,
 }
 
 impl Counter {
-    fn get(&self) -> i8 {
+    fn get(&self) -> u64 {
         return self.i;
     }
 
 }
 
-fn run(app: &gtk::Application, duration: i8) {
+fn run(app: &gtk::Application, duration: u64) {
     let window = ApplicationWindow::new(app);
     window.set_title("First GTK+ Program");
     window.set_default_size(350, 70);
@@ -68,7 +68,7 @@ fn run(app: &gtk::Application, duration: i8) {
     });
 }
 
-fn show_window(duration: i8) {
+fn show_window(duration: u64) {
     let application = Application::new(
         Some("com.github.gtk-rs.examples.basic"),
         Default::default(),
@@ -94,7 +94,7 @@ fn show_window(duration: i8) {
 }
 
 fn main() {
-    let duration = Arc::new(Mutex::new(0 as i8));
+    let duration = Arc::new(Mutex::new(0 as u64));
     let (tx, rx) = mpsc::channel();
     let cnf = config::Config::new();
     {
@@ -104,8 +104,11 @@ fn main() {
                 let (duration, tx) = (duration.clone(), tx.clone());
                 let closure =  move || {
                     let mut duration = duration.lock().unwrap();
-                    *duration += 3;
-                    thread::sleep(cnf.smalll_break);
+
+                    // TODO: here should be defining  duration of break
+                    *duration += cnf.smalll_break.as_secs();
+
+                    thread::sleep(Duration::from_secs(5));
                     tx.send(*duration)
                 };
                 match closure() {
